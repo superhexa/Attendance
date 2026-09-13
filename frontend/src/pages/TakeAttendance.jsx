@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { QRCodeSVG } from "qrcode.react";
 import {
   Check, X, Clock, FileText, LogOut, CheckCheck, Lock, Search, ClipboardCheck,
   QrCode, Loader2, CalendarClock, ChevronLeft,
@@ -74,6 +75,7 @@ function AttendanceSheet({ timetableId, date, onBack }) {
   const [submitting, setSubmitting] = useState(false);
   const [q, setQ] = useState("");
   const [correction, setCorrection] = useState(null);
+  const [qrData, setQrData] = useState(null);
   const { data: settings } = useQuery({ queryKey: ["settings"], queryFn: async () => (await api.get("/settings")).data });
 
   const load = async () => {
@@ -104,7 +106,7 @@ function AttendanceSheet({ timetableId, date, onBack }) {
   };
 
   const genQR = async () => {
-    try { const { data } = await api.post("/attendance/qr/generate", { timetable_id: timetableId, date }); toast.success(`رمز الحضور: ${data.code}`, { duration: 15000, description: "صالح لمدة 5 دقائق" }); }
+    try { const { data } = await api.post("/attendance/qr/generate", { timetable_id: timetableId, date }); setQrData(data); }
     catch (e) { toast.error(apiError(e)); }
   };
 
@@ -187,6 +189,7 @@ function AttendanceSheet({ timetableId, date, onBack }) {
       )}
 
       <CorrectionDialog correction={correction} onClose={() => setCorrection(null)} timetableId={timetableId} date={date} onDone={load} />
+      <QRDialog data={qrData} onClose={() => setQrData(null)} />
     </div>
   );
 }
@@ -214,6 +217,35 @@ function CorrectionDialog({ correction, onClose, timetableId, date, onDone }) {
           <div className="space-y-1.5"><Label>السبب</Label><Textarea value={reason} onChange={(e) => setReason(e.target.value)} data-testid="correction-reason" /></div>
         </div>
         <DialogFooter><Button variant="outline" onClick={onClose}>إلغاء</Button><Button onClick={submit} data-testid="submit-correction">إرسال الطلب</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function QRDialog({ data, onClose }) {
+  const [left, setLeft] = useState(0);
+  useEffect(() => {
+    if (!data) return;
+    const end = new Date(data.expires_at).getTime();
+    const tick = () => setLeft(Math.max(0, Math.floor((end - Date.now()) / 1000)));
+    tick();
+    const id = setInterval(tick, 500);
+    return () => clearInterval(id);
+  }, [data]);
+  return (
+    <Dialog open={!!data} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader><DialogTitle>رمز حضور الحصة</DialogTitle></DialogHeader>
+        <div className="flex flex-col items-center gap-4 py-2">
+          {data && (
+            <div className="rounded-2xl bg-white p-4 shadow ring-1 ring-slate-200">
+              <QRCodeSVG value={data.code} size={220} level="M" data-testid="qr-svg" />
+            </div>
+          )}
+          <p className="text-sm text-muted-foreground">اطلب من الطلاب مسح الرمز — ينتهي خلال</p>
+          <p className={cn("text-3xl font-extrabold", left > 0 ? "text-emerald-600" : "text-rose-600")}>{left}s</p>
+          <code className="rounded bg-muted px-3 py-1 text-xs">{data?.code}</code>
+        </div>
       </DialogContent>
     </Dialog>
   );

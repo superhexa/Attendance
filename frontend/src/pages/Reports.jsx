@@ -53,12 +53,24 @@ export default function Reports() {
     } catch (e) { toast.error(apiError(e)); }
   };
 
+  const exportPdf = async () => {
+    try {
+      const res = await api.get("/reports/attendance/pdf", { params: buildParams(), responseType: "blob" });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement("a");
+      a.href = url; a.download = "attendance_report.pdf"; a.click();
+      URL.revokeObjectURL(url);
+      toast.success("تم تصدير PDF");
+    } catch (e) { toast.error(apiError(e)); }
+  };
+
   return (
     <div>
       <PageHeader title={t("nav.reports")} subtitle="تقارير الحضور القابلة للتصفية والتصدير" breadcrumb={t("group_insights")}
         actions={<div className="flex gap-2">
           <Button variant="outline" onClick={() => window.print()} className="gap-2" data-testid="print-report"><Printer className="h-4 w-4" /> طباعة</Button>
-          {can("reports.export") && <Button onClick={exportCsv} className="gap-2" data-testid="export-report"><Download className="h-4 w-4" /> تصدير CSV</Button>}
+          {can("reports.export") && <Button variant="outline" onClick={exportCsv} className="gap-2" data-testid="export-report"><Download className="h-4 w-4" /> CSV</Button>}
+          {can("reports.export") && <Button onClick={exportPdf} className="gap-2" data-testid="export-pdf"><FileBarChart className="h-4 w-4" /> PDF</Button>}
         </div>} />
 
       <Card className="mb-4 grid gap-3 p-4 sm:grid-cols-3 lg:grid-cols-6">

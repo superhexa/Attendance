@@ -254,6 +254,25 @@ async def export_attendance(request: Request, date_from: Optional[str] = None, d
                              headers={"Content-Disposition": "attachment; filename=attendance_report.csv"})
 
 
+@router.get("/reports/attendance/pdf")
+async def export_attendance_pdf(request: Request, date_from: Optional[str] = None, date_to: Optional[str] = None,
+                                grade_id: Optional[str] = None, section_id: Optional[str] = None,
+                                subject_id: Optional[str] = None, student_id: Optional[str] = None,
+                                teacher_id: Optional[str] = None, status: Optional[str] = None,
+                                user: dict = Depends(require("reports.export"))):
+    data = await report_attendance(date_from, date_to, grade_id, section_id, subject_id, student_id, teacher_id, status, user)
+    settings = await get_settings()
+    from pdf_utils import build_attendance_pdf
+    meta = []
+    if date_from or date_to:
+        meta.append(f"الفترة: من {date_from or '—'} إلى {date_to or '—'}")
+    meta.append(f"عدد السجلات: {data['total']}")
+    pdf_bytes = build_attendance_pdf(settings["school_name_ar"], meta, data["summary"], data["attendance_rate"], data["rows"])
+    await log_audit(user, "report.export", "report", "attendance_pdf", new_value={"rows": data["total"]}, request=request)
+    return StreamingResponse(iter([pdf_bytes]), media_type="application/pdf",
+                             headers={"Content-Disposition": "attachment; filename=attendance_report.pdf"})
+
+
 @router.get("/reports/teacher-submissions")
 async def teacher_submissions(user: dict = Depends(require("reports.view"))):
     teachers = await db.teachers.find({"deleted": {"$ne": True}}, {"_id": 0}).to_list(200)

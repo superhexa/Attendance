@@ -14,7 +14,8 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Trash2, CheckCircle2, CalendarRange, Layers, Building2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Plus, Trash2, CheckCircle2, CalendarRange, Layers, Building2, ArrowUpNarrowWide } from "lucide-react";
 
 function Years() {
   const qc = useQueryClient();
@@ -138,8 +139,78 @@ function SectionsTab() {
   );
 }
 
+function Promotion() {
+  const qc = useQueryClient();
+  const { data, refetch } = useQuery({ queryKey: ["promotion"], queryFn: async () => (await api.get("/promotion/preview")).data });
+  const { data: grades = [] } = useGrades();
+  const { data: sections = [] } = useSections();
+  const [plan, setPlan] = useState({});
+  const [confirm, setConfirm] = useState(false);
+  const setRow = (gid, patch) => setPlan((p) => ({ ...p, [gid]: { ...(p[gid] || { action: "none" }), ...patch } }));
+  const apply = async () => {
+    const mappings = Object.entries(plan).filter(([, v]) => v.action && v.action !== "none")
+      .map(([from_grade_id, v]) => ({ from_grade_id, action: v.action, to_grade_id: v.to_grade_id || null, to_section_id: v.to_section_id || null }));
+    if (!mappings.length) { toast.error("لم تحدد أي ترقية"); setConfirm(false); return; }
+    try {
+      const { data: res } = await api.post("/promotion/apply", { mappings });
+      toast.success(`تمت ترقية ${res.promoted} طالبًا وتخريج ${res.graduated}`);
+      setPlan({}); setConfirm(false); refetch(); qc.invalidateQueries({ queryKey: ["students"] });
+    } catch (e) { toast.error(apiError(e)); }
+  };
+  const grds = data?.grades || [];
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">العام النشط: <b className="text-foreground">{data?.active_year || "-"}</b> — حدّد وجهة كل صف ثم طبّق الترقية بضغطة واحدة.</p>
+      <Card className="overflow-hidden">
+        {grds.length === 0 ? <EmptyState title="لا توجد صفوف" icon={Layers} /> : (
+          <div className="divide-y">
+            {grds.map((g) => {
+              const row = plan[g.grade_id] || { action: "none" };
+              const targetSections = sections.filter((s) => s.grade_id === row.to_grade_id);
+              return (
+                <div key={g.grade_id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center" data-testid={`promote-row-${g.grade_id}`}>
+                  <div className="min-w-[190px]"><p className="font-bold">{g.grade_name}</p><p className="text-xs text-muted-foreground">{g.student_count} طالب</p></div>
+                  <Select value={row.action} onValueChange={(v) => setRow(g.grade_id, { action: v, to_grade_id: undefined, to_section_id: undefined })}>
+                    <SelectTrigger className="w-44" data-testid={`promote-action-${g.grade_id}`}><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">بدون تغيير</SelectItem>
+                      <SelectItem value="promote">ترقية إلى صف</SelectItem>
+                      <SelectItem value="graduate">تخريج / أرشفة</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {row.action === "promote" && (
+                    <>
+                      <Select value={row.to_grade_id || ""} onValueChange={(v) => setRow(g.grade_id, { to_grade_id: v, to_section_id: undefined })}>
+                        <SelectTrigger className="w-48" data-testid={`promote-target-${g.grade_id}`}><SelectValue placeholder="الصف الهدف" /></SelectTrigger>
+                        <SelectContent>{grades.filter((x) => x.id !== g.grade_id).map((x) => <SelectItem key={x.id} value={x.id}>{x.name}</SelectItem>)}</SelectContent>
+                      </Select>
+                      <Select value={row.to_section_id || ""} onValueChange={(v) => setRow(g.grade_id, { to_section_id: v })} disabled={!row.to_grade_id}>
+                        <SelectTrigger className="w-40"><SelectValue placeholder="الشعبة (اختياري)" /></SelectTrigger>
+                        <SelectContent>{targetSections.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Card>
+      <Button onClick={() => setConfirm(true)} className="gap-2" data-testid="apply-promotion-btn"><ArrowUpNarrowWide className="h-4 w-4" /> تطبيق الترقية</Button>
+      <AlertDialog open={confirm} onOpenChange={setConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader><AlertDialogTitle>تأكيد الترقية السنوية</AlertDialogTitle><AlertDialogDescription>سيتم نقل أو تخريج الطلاب حسب الخطة المحددة. تأكد من صحة الوجهات قبل المتابعة.</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogFooter><AlertDialogCancel>إلغاء</AlertDialogCancel><AlertDialogAction onClick={apply} className="bg-emerald-600" data-testid="confirm-promotion">تطبيق</AlertDialogAction></AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
 export default function Structure() {
   const { t } = useLang();
+  const { can } = useAuth();
+  const showPromotion = can("students.edit");
   return (
     <div>
       <PageHeader title={t("nav.structure")} subtitle="الأعوام الدراسية، الصفوف، والشعب" breadcrumb={t("group_academic")} />
@@ -148,10 +219,12 @@ export default function Structure() {
           <TabsTrigger value="years" data-testid="tab-years">الأعوام الدراسية</TabsTrigger>
           <TabsTrigger value="grades" data-testid="tab-grades">الصفوف</TabsTrigger>
           <TabsTrigger value="sections" data-testid="tab-sections">الشعب</TabsTrigger>
+          {showPromotion && <TabsTrigger value="promotion" data-testid="tab-promotion">الترقية والتخريج</TabsTrigger>}
         </TabsList>
         <TabsContent value="years"><Years /></TabsContent>
         <TabsContent value="grades"><Grades /></TabsContent>
         <TabsContent value="sections"><SectionsTab /></TabsContent>
+        {showPromotion && <TabsContent value="promotion"><Promotion /></TabsContent>}
       </Tabs>
     </div>
   );

@@ -17,7 +17,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, Pencil, Trash2, KeyRound, Users2, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, KeyRound, Users2, Search, Upload } from "lucide-react";
+import { ImportDialog } from "@/components/ImportDialog";
 
 const EMPTY = { full_name: "", employee_id: "", email: "", phone: "", subject_ids: [], assigned_section_ids: [], create_account: false, username: "", password: "" };
 
@@ -103,6 +104,7 @@ export default function Teachers() {
   const [dialog, setDialog] = useState(false);
   const [editing, setEditing] = useState(null);
   const [toDelete, setToDelete] = useState(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   useEffect(() => { const id = setTimeout(() => setDebounced(search), 300); return () => clearTimeout(id); }, [search]);
   useEffect(() => { if (sp.get("new") && can("teachers.create")) { setEditing(null); setDialog(true); setSp({}); } }, [sp]);
@@ -120,7 +122,12 @@ export default function Teachers() {
   return (
     <div>
       <PageHeader title={t("nav.teachers")} subtitle={`${data?.total ?? 0} معلم`} breadcrumb={t("group_people")}
-        actions={can("teachers.create") && <Button onClick={() => { setEditing(null); setDialog(true); }} className="gap-2" data-testid="add-teacher-btn"><Plus className="h-4 w-4" /> إضافة معلم</Button>} />
+        actions={can("teachers.create") && (
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setImportOpen(true)} className="gap-2" data-testid="import-teachers-btn"><Upload className="h-4 w-4" /> استيراد</Button>
+            <Button onClick={() => { setEditing(null); setDialog(true); }} className="gap-2" data-testid="add-teacher-btn"><Plus className="h-4 w-4" /> إضافة معلم</Button>
+          </div>
+        )} />
 
       <Card className="mb-4 p-4">
         <div className="relative max-w-sm"><Search className="absolute top-2.5 h-4 w-4 text-muted-foreground start-3" />
@@ -160,6 +167,7 @@ export default function Teachers() {
       </Card>
 
       <TeacherForm open={dialog} onOpenChange={setDialog} editing={editing} onSaved={() => qc.invalidateQueries({ queryKey: ["teachers"] })} />
+      <ImportDialog type="teachers" open={importOpen} onOpenChange={setImportOpen} onDone={() => qc.invalidateQueries({ queryKey: ["teachers"] })} />
       <AlertDialog open={!!toDelete} onOpenChange={() => setToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader><AlertDialogTitle>حذف المعلم</AlertDialogTitle><AlertDialogDescription>هل أنت متأكد من حذف {toDelete?.full_name}؟</AlertDialogDescription></AlertDialogHeader>
