@@ -21,6 +21,7 @@ import Students from "@/pages/Students";
 import StudentDetail from "@/pages/StudentDetail";
 import Teachers from "@/pages/Teachers";
 import Users from "@/pages/Users";
+import PendingSignups from "@/pages/PendingSignups";
 import Reports from "@/pages/Reports";
 import Analytics from "@/pages/Analytics";
 import Announcements from "@/pages/Announcements";
@@ -57,6 +58,7 @@ function App() {
               <Route path="/students/:id" element={<ProtectedRoute perm="students.view"><StudentDetail /></ProtectedRoute>} />
               <Route path="/teachers" element={<ProtectedRoute perm="teachers.view"><Teachers /></ProtectedRoute>} />
               <Route path="/users" element={<ProtectedRoute perm="users.view"><Users /></ProtectedRoute>} />
+              <Route path="/signups" element={<ProtectedRoute perm="signups.view"><PendingSignups /></ProtectedRoute>} />
               <Route path="/reports" element={<ProtectedRoute perm="reports.view"><Reports /></ProtectedRoute>} />
               <Route path="/analytics" element={<ProtectedRoute perm="reports.view"><Analytics /></ProtectedRoute>} />
               <Route path="/announcements" element={<ProtectedRoute perm="announcements.view"><Announcements /></ProtectedRoute>} />

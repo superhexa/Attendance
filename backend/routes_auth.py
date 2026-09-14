@@ -80,6 +80,10 @@ async def login(body: LoginBody, request: Request, response: Response):
 
     if user.get("status") == "disabled":
         raise HTTPException(status_code=403, detail="تم تعطيل هذا الحساب")
+    if user.get("status") == "pending_approval":
+        raise HTTPException(status_code=403, detail="حسابك بانتظار موافقة مدير المدرسة. سيتم إعلامك عند التفعيل.")
+    if user.get("status") == "rejected":
+        raise HTTPException(status_code=403, detail="تم رفض طلب التسجيل. يرجى التواصل مع إدارة المدرسة.")
 
     # 2FA gate
     if user.get("twofa_enabled"):
@@ -206,14 +210,6 @@ async def forgot_password(body: ForgotBody):
 
 
 # ---------- Public signup (Students only, requires school key) ----------
-class StudentSignupBody(BaseModel):
-    school_key: str
-    full_name: str
-    email: str
-    password: str
-    student_number: Optional[str] = None
-
-
 @router.get("/school-info")
 async def school_info():
     s = await get_settings()
@@ -224,8 +220,42 @@ async def school_info():
     }
 
 
+@router.get("/public-structure")
+async def public_structure(school_key: str):
+    """Return grades + sections for the signup wizard. Requires a valid school key."""
+    settings = await get_settings()
+    expected_key = (settings.get("student_signup_key") or "").strip()
+    if not expected_key or (school_key or "").strip().upper() != expected_key.upper():
+        raise HTTPException(status_code=403, detail="مفتاح المدرسة غير صحيح")
+    # Only active academic year (if any is active), otherwise all
+    year = await db.academic_years.find_one({"is_active": True, "deleted": {"$ne": True}}, {"_id": 0})
+    q_g = {"deleted": {"$ne": True}}
+    q_s = {"deleted": {"$ne": True}}
+    if year:
+        q_g["academic_year_id"] = year["id"]
+        q_s["academic_year_id"] = year["id"]
+    grades = await db.grades.find(q_g, {"_id": 0, "id": 1, "name": 1, "level": 1}).sort("level", 1).to_list(200)
+    sections = await db.sections.find(q_s, {"_id": 0, "id": 1, "name": 1, "grade_id": 1}).to_list(500)
+    return {"grades": grades, "sections": sections}
+
+
+class StudentSignupBody(BaseModel):
+    school_key: str
+    full_name: str
+    email: str
+    password: str
+    student_number: Optional[str] = None
+    grade_id: Optional[str] = None
+    section_id: Optional[str] = None
+    dob: Optional[str] = None
+    gender: Optional[str] = "male"
+    guardian_name: Optional[str] = None
+    guardian_phone: Optional[str] = None
+    contact_phone: Optional[str] = None
+
+
 @router.post("/signup/student")
-async def student_signup(body: StudentSignupBody, request: Request, response: Response):
+async def student_signup(body: StudentSignupBody, request: Request):
     settings = await get_settings()
     if not settings.get("student_signup_enabled", True):
         raise HTTPException(status_code=403, detail="التسجيل الذاتي للطلاب معطّل حاليًا")
@@ -244,52 +274,48 @@ async def student_signup(body: StudentSignupBody, request: Request, response: Re
         raise HTTPException(status_code=400, detail="الاسم الكامل مطلوب")
     if await db.users.find_one({"email": email}):
         raise HTTPException(status_code=400, detail="البريد الإلكتروني مستخدم مسبقًا")
+    if not body.grade_id or not body.section_id:
+        raise HTTPException(status_code=400, detail="الرجاء اختيار الصف والشعبة")
+    grade = await db.grades.find_one({"id": body.grade_id, "deleted": {"$ne": True}})
+    section = await db.sections.find_one({"id": body.section_id, "deleted": {"$ne": True}})
+    if not grade or not section:
+        raise HTTPException(status_code=400, detail="الصف أو الشعبة غير صالحة")
 
-    # Optionally link to existing student record by student_number
-    student_link_id = None
-    if body.student_number:
-        sn = body.student_number.strip()
-        existing_student = await db.students.find_one({"student_number": sn, "deleted": {"$ne": True}})
-        if existing_student:
-            if existing_student.get("user_id"):
-                raise HTTPException(status_code=400, detail="هذا الطالب لديه حساب مسبقًا")
-            student_link_id = existing_student["id"]
+    signup_data = {
+        "student_number": (body.student_number or "").strip() or None,
+        "grade_id": body.grade_id,
+        "section_id": body.section_id,
+        "dob": (body.dob or "").strip(),
+        "gender": (body.gender or "male"),
+        "guardian_name": (body.guardian_name or "").strip(),
+        "guardian_phone": (body.guardian_phone or "").strip(),
+        "contact_phone": (body.contact_phone or "").strip(),
+        "submitted_at": iso(),
+    }
 
     uid = new_id()
     user_doc = {
         "id": uid, "email": email, "username": email.split("@")[0],
         "password_hash": hash_password(body.password), "full_name": body.full_name.strip(),
         "role": "STUDENT", "permission_overrides": {"grant": [], "revoke": []},
-        "status": "active", "twofa_enabled": False, "last_login": None,
+        "status": "pending_approval",
+        "twofa_enabled": False, "last_login": None,
         "created_at": iso(),
+        "pending_signup_data": signup_data,
     }
-    if student_link_id:
-        user_doc["student_id"] = student_link_id
     await db.users.insert_one(user_doc)
-    if student_link_id:
-        await db.students.update_one({"id": student_link_id}, {"$set": {"user_id": uid, "email": email}})
-
-    # Create session and login immediately
-    jti = new_id()
-    ua = request.headers.get("user-agent", "")
-    await db.sessions.insert_one({
-        "id": jti, "user_id": uid, "device": parse_device(ua),
-        "ip": client_ip(request), "user_agent": ua, "created_at": iso(),
-        "last_active": iso(), "revoked": False, "remember": False,
-    })
-    access = create_access_token(uid, "STUDENT")
-    refresh = create_refresh_token(uid, jti)
-    set_auth_cookies(response, access, refresh, False)
-    await db.users.update_one({"id": uid}, {"$set": {"last_login": iso()}})
-    await log_audit(user_doc, "signup", "auth", uid, request=request)
+    await log_audit(user_doc, "signup.submitted", "auth", uid, request=request)
     # Notify admins
     try:
         from core import notify_roles as _nr
         await _nr(["SUPER_ADMIN", "DIRECTOR"], "account_created",
-                  "حساب طالب جديد", f"سجّل الطالب {body.full_name.strip()} حسابًا جديدًا")
+                  "طلب تسجيل طالب جديد",
+                  f"طلب الطالب {body.full_name.strip()} إنشاء حساب — بانتظار الموافقة",
+                  meta={"signup_user_id": uid})
     except Exception:
         pass
-    return {"user": public_user(user_doc), "access_token": access}
+    return {"ok": True, "status": "pending_approval",
+            "message": "تم استلام طلبك. سيقوم مدير المدرسة بمراجعته قريبًا."}
 
 
 @router.post("/reset-password")

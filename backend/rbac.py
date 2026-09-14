@@ -11,6 +11,7 @@ PERMISSIONS = [
     "timetable.view", "timetable.create", "timetable.edit", "timetable.delete",
     "reports.view", "reports.export",
     "users.view", "users.create", "users.edit", "users.disable",
+    "signups.view", "signups.approve",
     "announcements.view", "announcements.create", "announcements.edit", "announcements.delete",
     "notifications.view",
     "settings.manage",
@@ -27,6 +28,7 @@ PERMISSION_GROUPS = {
     "timetable": ["timetable.view", "timetable.create", "timetable.edit", "timetable.delete"],
     "reports": ["reports.view", "reports.export"],
     "users": ["users.view", "users.create", "users.edit", "users.disable"],
+    "signups": ["signups.view", "signups.approve"],
     "announcements": ["announcements.view", "announcements.create", "announcements.edit", "announcements.delete"],
     "system": ["settings.manage", "audit_logs.view"],
 }

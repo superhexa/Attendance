@@ -117,6 +117,8 @@ async def get_current_user(request: Request) -> dict:
             raise HTTPException(status_code=401, detail="المستخدم غير موجود")
         if user.get("status") == "disabled":
             raise HTTPException(status_code=403, detail="تم تعطيل الحساب")
+        if user.get("status") in ("pending_approval", "rejected"):
+            raise HTTPException(status_code=403, detail="الحساب غير مفعّل")
         return user
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="انتهت صلاحية الجلسة")
