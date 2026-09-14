@@ -33,21 +33,21 @@ function SidebarContent({ onNavigate }) {
   const grouped = GROUP_ORDER.map((g) => ({ g, items: items.filter((i) => i.group === g) })).filter((x) => x.items.length);
 
   return (
-    <div className="flex h-full flex-col bg-slate-900 text-slate-100">
-      <div className="flex items-center gap-3 border-b border-slate-800 px-5 py-5">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500 text-slate-900 shadow-lg">
+    <div className="flex h-full flex-col bg-white text-slate-900">
+      <div className="flex items-center gap-3 border-b border-slate-200 px-5 py-5">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/20">
           <School className="h-6 w-6" />
         </div>
         <div className="min-w-0">
-          <p className="truncate text-sm font-extrabold leading-tight">{t("school_short")}</p>
-          <p className="truncate text-[11px] text-slate-400">{t("app_name")}</p>
+          <p className="truncate text-sm font-extrabold leading-tight text-slate-900">{t("school_short")}</p>
+          <p className="truncate text-[11px] text-slate-500">{t("app_name")}</p>
         </div>
       </div>
       <ScrollArea className="flex-1 px-3 py-4">
         <nav className="space-y-6">
           {grouped.map(({ g, items }) => (
             <div key={g}>
-              <p className="px-3 pb-2 text-[11px] font-bold uppercase tracking-wider text-slate-500">{t(g)}</p>
+              <p className="px-3 pb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">{t(g)}</p>
               <div className="space-y-1">
                 {items.map((item) => {
                   const Icon = item.icon;
@@ -61,8 +61,8 @@ function SidebarContent({ onNavigate }) {
                         cn(
                           "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                           isActive
-                            ? "bg-emerald-600/20 text-emerald-400 font-bold"
-                            : "text-slate-400 hover:bg-slate-800/70 hover:text-slate-100"
+                            ? "bg-emerald-50 text-emerald-700 font-bold"
+                            : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                         )
                       }
                     >
@@ -76,7 +76,7 @@ function SidebarContent({ onNavigate }) {
           ))}
         </nav>
       </ScrollArea>
-      <div className="border-t border-slate-800 p-4 text-[11px] text-slate-500">
+      <div className="border-t border-slate-200 p-4 text-[11px] text-slate-400">
         v1.0 · 2026/2027
       </div>
     </div>
@@ -232,7 +232,7 @@ export function Layout() {
   return (
     <div className="min-h-screen bg-background">
       {/* Sidebar desktop (right in RTL / left in LTR handled by flex order) */}
-      <aside className="fixed inset-y-0 z-40 hidden w-72 lg:block" style={{ [lang === "ar" ? "right" : "left"]: 0 }}>
+      <aside className={cn("fixed inset-y-0 z-40 hidden w-72 lg:block", lang === "ar" ? "border-l border-slate-200" : "border-r border-slate-200")} style={{ [lang === "ar" ? "right" : "left"]: 0 }}>
         <SidebarContent />
       </aside>
 
@@ -285,7 +285,7 @@ export function Layout() {
           </div>
         </header>
 
-        <main className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
+        <main className="mx-auto max-w-7xl p-3 sm:p-4 md:p-6 lg:p-8">
           <Outlet />
         </main>
       </div>

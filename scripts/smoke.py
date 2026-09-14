@@ -1,7 +1,7 @@
 """End-to-end smoke test + minimal demo data creation via the public API."""
 import requests, sys, random
 
-BASE = "https://absence-monitor-30.preview.emergentagent.com/api"
+BASE = "https://clean-interface-87.preview.emergentagent.com/api"
 s = requests.Session()
 
 def ok(r, label):
