@@ -21,6 +21,7 @@ import {
   CommandDialog, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem,
 } from "@/components/ui/command";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { MobileBottomNav } from "@/components/MobileBottomNav";
 
 function SidebarContent({ onNavigate }) {
   const { t, lang } = useLang();
@@ -224,6 +225,14 @@ export function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
 
+  const { data: notifs } = useQuery({
+    queryKey: ["notifications"],
+    queryFn: async () => (await api.get("/notifications")).data,
+    refetchInterval: 30000,
+    enabled: !!user?.id,
+  });
+  const unreadCount = notifs?.unread_count || 0;
+
   useEffect(() => { setMobileOpen(false); }, [location.pathname]);
 
   const initials = (user?.full_name || "?").trim().charAt(0);
@@ -289,6 +298,9 @@ export function Layout() {
           <Outlet />
         </main>
       </div>
+
+      {/* Beautiful floating mobile bottom nav */}
+      <MobileBottomNav onOpenMenu={() => setMobileOpen(true)} unreadCount={unreadCount} />
     </div>
   );
 }

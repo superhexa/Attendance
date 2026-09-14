@@ -402,7 +402,12 @@ async def global_search(q: str = Query(..., min_length=1), user: dict = Depends(
 # ==================== Settings ====================
 @router.get("/settings")
 async def read_settings(user: dict = Depends(get_current_user)):
-    return await get_settings()
+    s = await get_settings()
+    # Hide signup key from users who can't manage settings
+    if not rbac.has_permission(user, "settings.manage"):
+        s = dict(s)
+        s.pop("student_signup_key", None)
+    return s
 
 
 class SettingsBody(BaseModel):
@@ -420,6 +425,7 @@ class SettingsBody(BaseModel):
     periods_count: Optional[int] = None
     maintenance_mode: Optional[bool] = None
     require_2fa_admins: Optional[bool] = None
+    student_signup_enabled: Optional[bool] = None
 
 
 @router.patch("/settings")
@@ -428,6 +434,20 @@ async def update_settings(body: SettingsBody, request: Request, user: dict = Dep
     await db.settings.update_one({"id": "global"}, {"$set": updates}, upsert=True)
     await log_audit(user, "settings.change", "settings", "global", new_value=updates, request=request)
     return await get_settings()
+
+
+@router.post("/settings/rotate-signup-key")
+async def rotate_signup_key(request: Request, user: dict = Depends(require("settings.manage"))):
+    import secrets as _secrets
+    # short readable key: 4 groups of 4 chars
+    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    parts = []
+    for _ in range(4):
+        parts.append("".join(_secrets.choice(alphabet) for _ in range(4)))
+    key = "-".join(parts)
+    await db.settings.update_one({"id": "global"}, {"$set": {"student_signup_key": key}}, upsert=True)
+    await log_audit(user, "settings.rotate_signup_key", "settings", "global", request=request)
+    return {"student_signup_key": key}
 
 
 @router.post("/settings/backup")

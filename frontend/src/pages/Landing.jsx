@@ -54,6 +54,13 @@ function Nav() {
           <button onClick={toggle} className="rounded-lg px-2.5 py-1.5 text-sm font-bold text-slate-600 hover:bg-slate-100" data-testid="landing-lang-toggle">
             {lang === "ar" ? "EN" : "ع"}
           </button>
+          {!user?.id && (
+            <Link to="/signup" className="hidden sm:inline-block">
+              <Button variant="outline" className="rounded-lg border-slate-300 font-bold text-slate-700 hover:bg-slate-50" data-testid="landing-nav-signup">
+                {lang === "ar" ? "تسجيل طالب" : "Sign up"}
+              </Button>
+            </Link>
+          )}
           <Link to={target}>
             <Button className="gap-2 rounded-lg bg-emerald-600 font-bold hover:bg-emerald-700" data-testid="landing-nav-login">
               {user?.id ? "لوحة التحكم" : "تسجيل الدخول"}

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { useNavigate, useLocation, Navigate } from "react-router-dom";
-import { School, Loader2, ShieldCheck } from "lucide-react";
+import { useNavigate, useLocation, Navigate, Link } from "react-router-dom";
+import { School, Loader2, ShieldCheck, Mail, Lock, Sparkles, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useLang } from "@/lib/i18n";
 import { apiError } from "@/lib/api";
@@ -57,93 +57,99 @@ export default function Login() {
   };
 
   return (
-    <div className="grid min-h-screen lg:grid-cols-2">
-      {/* Visual side */}
-      <div className="relative hidden overflow-hidden bg-slate-900 lg:block">
-        <img
-          src="https://images.pexels.com/photos/5147366/pexels-photo-5147366.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
-          alt="school"
-          className="absolute inset-0 h-full w-full object-cover opacity-40"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/70 to-slate-900/30" />
-        <div className="relative flex h-full flex-col justify-between p-12 text-white">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500 text-slate-900">
-              <School className="h-7 w-7" />
-            </div>
-            <span className="text-lg font-bold">{t("app_name")}</span>
-          </div>
-          <div className="space-y-4">
-            <h2 className="text-4xl font-extrabold leading-tight">
-              مدرسة الملك حسين بن طلال الثانوية الشاملة للبنين
-            </h2>
-            <p className="max-w-md text-lg text-slate-300">
-              منصة متكاملة لإدارة الحضور المدرسي — دقيقة، آمنة، وسريعة.
-            </p>
-            <div className="flex items-center gap-2 text-sm text-emerald-400">
-              <ShieldCheck className="h-4 w-4" /> نظام محمي بصلاحيات دقيقة وسجل تدقيق كامل
-            </div>
-          </div>
-          <p className="text-sm text-slate-500">© 2026/2027</p>
-        </div>
+    <div className="relative min-h-screen overflow-hidden bg-slate-50" dir={lang === "ar" ? "rtl" : "ltr"}>
+      {/* Decorative background */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-32 start-1/4 h-96 w-96 rounded-full bg-emerald-200/50 blur-3xl" />
+        <div className="absolute top-40 end-0 h-80 w-80 rounded-full bg-amber-200/40 blur-3xl" />
+        <div className="absolute bottom-0 start-0 h-72 w-72 rounded-full bg-teal-200/40 blur-3xl" />
+        <div className="absolute inset-0" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, rgba(15,76,58,0.06) 1px, transparent 0)", backgroundSize: "28px 28px" }} />
       </div>
 
-      {/* Form side */}
-      <div className="flex items-center justify-center bg-background p-6">
-        <div className="w-full max-w-sm animate-fade-up">
-          <div className="mb-8 flex items-center justify-between">
-            <div className="flex items-center gap-2 lg:hidden">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-                <School className="h-6 w-6" />
+      <div className="relative mx-auto flex min-h-screen max-w-6xl items-center justify-center px-4 py-10 sm:px-6">
+        <div className="w-full max-w-md">
+          {/* Top nav */}
+          <div className="mb-6 flex items-center justify-between">
+            <Link to="/" className="flex items-center gap-2 text-sm font-bold text-slate-700 hover:text-emerald-700">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/25">
+                <School className="h-5 w-5" />
               </div>
-              <span className="font-bold">{t("app_name")}</span>
-            </div>
-            <button onClick={toggle} className="ms-auto rounded-lg border px-3 py-1.5 text-sm font-bold hover:bg-muted" data-testid="login-lang-toggle">
+              <span className="hidden sm:inline">{t("app_name")}</span>
+            </Link>
+            <button onClick={toggle} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-bold text-slate-700 hover:bg-slate-100" data-testid="login-lang-toggle">
               {lang === "ar" ? "English" : "العربية"}
             </button>
           </div>
 
-          <h1 className="text-3xl font-extrabold text-foreground">{t("login")}</h1>
-          <p className="mb-8 mt-1 text-sm text-muted-foreground">{t("login_subtitle")}</p>
+          <div className="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-2xl shadow-slate-900/10 backdrop-blur-xl sm:p-10">
+            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
+              <Sparkles className="h-3.5 w-3.5" /> {t("app_name")}
+            </span>
+            <h1 className="mt-4 text-2xl font-extrabold text-slate-900 sm:text-3xl">{t("login")}</h1>
+            <p className="mt-1 text-sm text-slate-600">{t("login_subtitle")}</p>
 
-          {error && (
-            <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-400" data-testid="login-error">
-              {error}
-            </div>
-          )}
+            {error && (
+              <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700" data-testid="login-error">
+                {error}
+              </div>
+            )}
 
-          {!twofa ? (
-            <form onSubmit={submit} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="email">{t("email")}</Label>
-                <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@school.edu" data-testid="login-email" autoComplete="email" />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="password">{t("password")}</Label>
-                <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••" data-testid="login-password" autoComplete="current-password" />
-              </div>
-              <label className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Checkbox checked={remember} onCheckedChange={(v) => setRemember(!!v)} data-testid="login-remember" />
-                {t("remember_me")}
-              </label>
-              <Button type="submit" className="w-full font-bold" size="lg" disabled={loading} data-testid="login-submit">
-                {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> {t("signing_in")}</> : t("login")}
-              </Button>
-            </form>
-          ) : (
-            <form onSubmit={submitOtp} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="otp">رمز التحقق (2FA)</Label>
-                <Input id="otp" value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="123456"
-                  data-testid="login-otp" inputMode="numeric" />
-              </div>
-              <Button type="submit" className="w-full font-bold" size="lg" disabled={loading} data-testid="login-otp-submit">
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : t("confirm")}
-              </Button>
-            </form>
-          )}
+            {!twofa ? (
+              <form onSubmit={submit} className="mt-6 space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="email" className="flex items-center gap-2 text-slate-700">
+                    <Mail className="h-4 w-4 text-emerald-600" />
+                    {t("email")}
+                  </Label>
+                  <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
+                    placeholder="name@school.edu" data-testid="login-email" autoComplete="email" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="password" className="flex items-center gap-2 text-slate-700">
+                    <Lock className="h-4 w-4 text-emerald-600" />
+                    {t("password")}
+                  </Label>
+                  <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••" data-testid="login-password" autoComplete="current-password" />
+                </div>
+                <label className="flex items-center gap-2 text-sm text-slate-600">
+                  <Checkbox checked={remember} onCheckedChange={(v) => setRemember(!!v)} data-testid="login-remember" />
+                  {t("remember_me")}
+                </label>
+                <Button type="submit" size="lg" className="w-full gap-2 rounded-xl bg-emerald-600 font-bold shadow-lg shadow-emerald-600/25 hover:bg-emerald-700"
+                  disabled={loading} data-testid="login-submit">
+                  {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> {t("signing_in")}</>
+                    : <>{t("login")} <ArrowLeft className={lang === "ar" ? "h-5 w-5" : "h-5 w-5 rotate-180"} /></>}
+                </Button>
+              </form>
+            ) : (
+              <form onSubmit={submitOtp} className="mt-6 space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="otp" className="flex items-center gap-2 text-slate-700">
+                    <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                    {lang === "ar" ? "رمز التحقق (2FA)" : "2FA Code"}
+                  </Label>
+                  <Input id="otp" value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="123456"
+                    data-testid="login-otp" inputMode="numeric" />
+                </div>
+                <Button type="submit" size="lg" className="w-full gap-2 rounded-xl bg-emerald-600 font-bold shadow-lg shadow-emerald-600/25 hover:bg-emerald-700"
+                  disabled={loading} data-testid="login-otp-submit">
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : t("confirm")}
+                </Button>
+              </form>
+            )}
+
+            <p className="mt-6 text-center text-sm text-slate-600">
+              {lang === "ar" ? "طالب جديد؟" : "New student?"}{" "}
+              <Link to="/signup" className="font-bold text-emerald-700 hover:underline" data-testid="login-go-signup">
+                {lang === "ar" ? "أنشئ حساب" : "Create account"}
+              </Link>
+            </p>
+          </div>
+
+          <p className="mt-6 text-center text-xs text-slate-400">
+            © 2026/2027 · {t("school_short")}
+          </p>
         </div>
       </div>
     </div>

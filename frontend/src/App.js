@@ -8,6 +8,7 @@ import { Toaster } from "@/components/ui/sonner";
 
 import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
+import Signup from "@/pages/Signup";
 import Dashboard from "@/pages/Dashboard";
 import TakeAttendance from "@/pages/TakeAttendance";
 import AttendanceView from "@/pages/AttendanceView";
@@ -36,6 +37,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
             <Route
               element={
                 <ProtectedRoute>

@@ -194,6 +194,8 @@ DEFAULT_SETTINGS = {
     "periods_count": 7,
     "maintenance_mode": False,
     "require_2fa_admins": False,
+    "student_signup_key": "",
+    "student_signup_enabled": True,
     "last_backup_at": None,
 }
 

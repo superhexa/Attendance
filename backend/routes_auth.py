@@ -1,6 +1,7 @@
 """Authentication, sessions, and 2FA endpoints."""
 import os
 import secrets
+from typing import Optional
 import pyotp
 from fastapi import APIRouter, Request, Response, Depends, HTTPException
 from pydantic import BaseModel
@@ -202,6 +203,93 @@ async def forgot_password(body: ForgotBody):
         })
         print(f"[PASSWORD RESET] {email} -> token: {token}")
     return {"ok": True, "message": "إذا كان البريد مسجلاً ستصلك تعليمات إعادة التعيين"}
+
+
+# ---------- Public signup (Students only, requires school key) ----------
+class StudentSignupBody(BaseModel):
+    school_key: str
+    full_name: str
+    email: str
+    password: str
+    student_number: Optional[str] = None
+
+
+@router.get("/school-info")
+async def school_info():
+    s = await get_settings()
+    return {
+        "school_name_ar": s.get("school_name_ar", ""),
+        "school_name_en": s.get("school_name_en", ""),
+        "signup_enabled": bool(s.get("student_signup_enabled", True)) and bool(s.get("student_signup_key")),
+    }
+
+
+@router.post("/signup/student")
+async def student_signup(body: StudentSignupBody, request: Request, response: Response):
+    settings = await get_settings()
+    if not settings.get("student_signup_enabled", True):
+        raise HTTPException(status_code=403, detail="التسجيل الذاتي للطلاب معطّل حاليًا")
+    expected_key = (settings.get("student_signup_key") or "").strip()
+    if not expected_key:
+        raise HTTPException(status_code=403, detail="لم يقم مدير المدرسة بإنشاء مفتاح تسجيل بعد")
+    if (body.school_key or "").strip().upper() != expected_key.upper():
+        raise HTTPException(status_code=400, detail="مفتاح المدرسة غير صحيح")
+
+    email = body.email.strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(status_code=400, detail="البريد الإلكتروني غير صالح")
+    if len(body.password) < 6:
+        raise HTTPException(status_code=400, detail="كلمة المرور يجب أن تكون 6 أحرف على الأقل")
+    if len(body.full_name.strip()) < 2:
+        raise HTTPException(status_code=400, detail="الاسم الكامل مطلوب")
+    if await db.users.find_one({"email": email}):
+        raise HTTPException(status_code=400, detail="البريد الإلكتروني مستخدم مسبقًا")
+
+    # Optionally link to existing student record by student_number
+    student_link_id = None
+    if body.student_number:
+        sn = body.student_number.strip()
+        existing_student = await db.students.find_one({"student_number": sn, "deleted": {"$ne": True}})
+        if existing_student:
+            if existing_student.get("user_id"):
+                raise HTTPException(status_code=400, detail="هذا الطالب لديه حساب مسبقًا")
+            student_link_id = existing_student["id"]
+
+    uid = new_id()
+    user_doc = {
+        "id": uid, "email": email, "username": email.split("@")[0],
+        "password_hash": hash_password(body.password), "full_name": body.full_name.strip(),
+        "role": "STUDENT", "permission_overrides": {"grant": [], "revoke": []},
+        "status": "active", "twofa_enabled": False, "last_login": None,
+        "created_at": iso(),
+    }
+    if student_link_id:
+        user_doc["student_id"] = student_link_id
+    await db.users.insert_one(user_doc)
+    if student_link_id:
+        await db.students.update_one({"id": student_link_id}, {"$set": {"user_id": uid, "email": email}})
+
+    # Create session and login immediately
+    jti = new_id()
+    ua = request.headers.get("user-agent", "")
+    await db.sessions.insert_one({
+        "id": jti, "user_id": uid, "device": parse_device(ua),
+        "ip": client_ip(request), "user_agent": ua, "created_at": iso(),
+        "last_active": iso(), "revoked": False, "remember": False,
+    })
+    access = create_access_token(uid, "STUDENT")
+    refresh = create_refresh_token(uid, jti)
+    set_auth_cookies(response, access, refresh, False)
+    await db.users.update_one({"id": uid}, {"$set": {"last_login": iso()}})
+    await log_audit(user_doc, "signup", "auth", uid, request=request)
+    # Notify admins
+    try:
+        from core import notify_roles as _nr
+        await _nr(["SUPER_ADMIN", "DIRECTOR"], "account_created",
+                  "حساب طالب جديد", f"سجّل الطالب {body.full_name.strip()} حسابًا جديدًا")
+    except Exception:
+        pass
+    return {"user": public_user(user_doc), "access_token": access}
 
 
 @router.post("/reset-password")
