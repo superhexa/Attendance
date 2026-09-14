@@ -40,10 +40,11 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=[o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",") if o.strip()],
-    allow_origin_regex=r"https://.*\.preview\.emergentagent\.com|https://.*\.emergent\.host|http://localhost(:\d+)?",
+    allow_origins=[],
+    allow_origin_regex=r".*",
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 

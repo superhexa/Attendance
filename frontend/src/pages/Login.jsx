@@ -36,7 +36,22 @@ export default function Login() {
         navigate(location.state?.from?.pathname || "/dashboard", { replace: true });
       }
     } catch (err) {
-      setError(apiError(err, "تعذّر تسجيل الدخول"));
+      console.error("Login error", err, err?.response);
+      let msg;
+      if (err?.response?.data?.detail) {
+        msg = apiError(err);
+      } else if (err?.code === "ERR_NETWORK" || err?.message === "Network Error") {
+        msg = lang === "ar"
+          ? "تعذّر الاتصال بالخادم. تأكد من الاتصال بالإنترنت ثم أعد المحاولة."
+          : "Cannot reach the server. Check your connection and try again.";
+      } else if (err?.response?.status >= 500) {
+        msg = lang === "ar"
+          ? "خطأ في الخادم. يرجى المحاولة بعد قليل."
+          : "Server error. Please try again shortly.";
+      } else {
+        msg = lang === "ar" ? "تعذّر تسجيل الدخول. تأكد من البريد وكلمة المرور." : "Login failed. Check your email and password.";
+      }
+      setError(msg);
     } finally {
       setLoading(false);
     }
