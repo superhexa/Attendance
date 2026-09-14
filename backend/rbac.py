@@ -12,6 +12,7 @@ PERMISSIONS = [
     "reports.view", "reports.export",
     "users.view", "users.create", "users.edit", "users.disable",
     "signups.view", "signups.approve",
+    "substitutions.manage",
     "announcements.view", "announcements.create", "announcements.edit", "announcements.delete",
     "notifications.view",
     "settings.manage",
@@ -29,6 +30,7 @@ PERMISSION_GROUPS = {
     "reports": ["reports.view", "reports.export"],
     "users": ["users.view", "users.create", "users.edit", "users.disable"],
     "signups": ["signups.view", "signups.approve"],
+    "substitutions": ["substitutions.manage"],
     "announcements": ["announcements.view", "announcements.create", "announcements.edit", "announcements.delete"],
     "system": ["settings.manage", "audit_logs.view"],
 }

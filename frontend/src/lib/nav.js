@@ -2,12 +2,14 @@ import {
   LayoutDashboard, ClipboardCheck, CalendarClock, GraduationCap, Users2,
   Building2, BookOpen, CalendarDays, FileBarChart, LineChart, Megaphone,
   Bell, ScrollText, ShieldCheck, Settings, QrCode, ClipboardList, UserPlus,
+  ScanLine, ArrowRightLeft,
 } from "lucide-react";
 
 // Each item: { key, to, icon, perm?, roles?, group }
 export const NAV = [
   { key: "nav.dashboard", to: "/dashboard", icon: LayoutDashboard, group: "group_main" },
   { key: "nav.take_attendance", to: "/take-attendance", icon: ClipboardCheck, group: "group_main", perm: "attendance.create" },
+  { key: "nav.ocr", to: "/ocr", icon: ScanLine, group: "group_main", perm: "attendance.create" },
   { key: "nav.qr_scan", to: "/scan", icon: QrCode, group: "group_main", roles: ["STUDENT"] },
   { key: "nav.attendance", to: "/attendance", icon: CalendarClock, group: "group_main", perm: "attendance.view" },
   { key: "nav.corrections", to: "/corrections", icon: ClipboardList, group: "group_main", perm: "attendance.view" },
@@ -19,6 +21,7 @@ export const NAV = [
   { key: "nav.students", to: "/students", icon: GraduationCap, group: "group_people", perm: "students.view" },
   { key: "nav.signups", to: "/signups", icon: UserPlus, group: "group_people", perm: "signups.view" },
   { key: "nav.teachers", to: "/teachers", icon: Users2, group: "group_people", perm: "teachers.view" },
+  { key: "nav.substitutions", to: "/substitutions", icon: ArrowRightLeft, group: "group_people", perm: "substitutions.manage" },
   { key: "nav.users", to: "/users", icon: ShieldCheck, group: "group_people", perm: "users.view" },
 
   { key: "nav.reports", to: "/reports", icon: FileBarChart, group: "group_insights", perm: "reports.view" },

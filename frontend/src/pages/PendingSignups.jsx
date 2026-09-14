@@ -79,18 +79,18 @@ function ApproveDialog({ open, onOpenChange, signup, grades, sections, onDone })
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-h-[95vh] w-[calc(100vw-1.5rem)] max-w-2xl overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
             <ShieldCheck className="h-5 w-5 text-emerald-600" />
             اعتماد حساب الطالب
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-xs sm:text-sm">
             راجع البيانات وعدّل ما يلزم قبل التفعيل. سيتمكن الطالب من تسجيل الدخول فور الاعتماد.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
           <div className="space-y-1.5 sm:col-span-2">
             <Label>الاسم الكامل</Label>
             <Input value={form.full_name || ""} onChange={(e) => set("full_name", e.target.value)} data-testid="approve-full-name" />
@@ -140,15 +140,15 @@ function ApproveDialog({ open, onOpenChange, signup, grades, sections, onDone })
             <Label>رقم ولي الأمر</Label>
             <Input value={form.guardian_phone || ""} onChange={(e) => set("guardian_phone", e.target.value)} />
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 sm:col-span-2">
             <Label>هاتف الطالب</Label>
             <Input value={form.contact_phone || ""} onChange={(e) => set("contact_phone", e.target.value)} />
           </div>
         </div>
 
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>إلغاء</Button>
-          <Button onClick={submit} disabled={loading} className="gap-2 bg-emerald-600 hover:bg-emerald-700" data-testid="approve-submit">
+        <DialogFooter className="mt-2 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">إلغاء</Button>
+          <Button onClick={submit} disabled={loading} className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 sm:w-auto" data-testid="approve-submit">
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserCheck className="h-4 w-4" />}
             اعتماد وتفعيل
           </Button>

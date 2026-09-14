@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
 
 from core import db, client, ensure_indexes, seed_admin
-import routes_auth, routes_structure, routes_users, routes_timetable, routes_attendance, routes_dashboard, routes_import, routes_promotion, routes_signups
+import routes_auth, routes_structure, routes_users, routes_timetable, routes_attendance, routes_dashboard, routes_import, routes_promotion, routes_signups, routes_substitutions, routes_ocr
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("attendance")
@@ -27,7 +27,7 @@ async def health():
     return {"status": "healthy"}
 
 
-for module in (routes_auth, routes_structure, routes_users, routes_timetable, routes_attendance, routes_dashboard, routes_import, routes_promotion, routes_signups):
+for module in (routes_auth, routes_structure, routes_users, routes_timetable, routes_attendance, routes_dashboard, routes_import, routes_promotion, routes_signups, routes_substitutions, routes_ocr):
     app.include_router(module.router)
 
 
