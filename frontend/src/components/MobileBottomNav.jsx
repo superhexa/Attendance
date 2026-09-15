@@ -50,7 +50,7 @@ export function MobileBottomNav({ onOpenMenu, unreadCount = 0 }) {
         <div className="pointer-events-none absolute inset-x-0 -top-6 h-6 bg-gradient-to-t from-slate-900/5 to-transparent" />
 
         <div className="mx-auto max-w-md px-3 pb-3 pt-1">
-          <div className="relative flex items-center justify-around rounded-2xl border border-slate-200 bg-white/95 px-1.5 py-1.5 shadow-[0_10px_40px_-10px_rgba(15,76,58,0.25)] backdrop-blur-xl">
+          <div className="relative flex items-center justify-around rounded-2xl border border-border bg-card/95 px-1.5 py-1.5 shadow-[0_10px_40px_-10px_rgba(15,76,58,0.25)] backdrop-blur-xl">
             {items.map((item) => {
               const Icon = item.icon;
               const isActive = item.to && (location.pathname === item.to || (item.to !== "/dashboard" && location.pathname.startsWith(item.to)));
@@ -62,12 +62,12 @@ export function MobileBottomNav({ onOpenMenu, unreadCount = 0 }) {
                       "relative flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-300",
                       isActive
                         ? "bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30 -translate-y-1 scale-110"
-                        : "text-slate-500 hover:text-emerald-700"
+                        : "text-muted-foreground hover:text-emerald-700 dark:hover:text-emerald-400"
                     )}
                   >
                     <Icon className="h-[20px] w-[20px]" strokeWidth={isActive ? 2.4 : 2} />
                     {!!item.badge && item.badge > 0 && (
-                      <span className="absolute -top-1 -end-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white ring-2 ring-white">
+                      <span className="absolute -top-1 -end-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white ring-2 ring-card">
                         {item.badge > 9 ? "9+" : item.badge}
                       </span>
                     )}
@@ -75,7 +75,7 @@ export function MobileBottomNav({ onOpenMenu, unreadCount = 0 }) {
                   <span
                     className={cn(
                       "mt-0.5 truncate text-[10px] font-bold leading-tight transition-colors",
-                      isActive ? "text-emerald-700" : "text-slate-500"
+                      isActive ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground"
                     )}
                   >
                     {item.label}

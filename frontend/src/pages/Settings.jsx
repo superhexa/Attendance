@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Database, Save, HardDriveDownload, School, Clock, QrCode, ShieldAlert, KeyRound, RefreshCw, Copy, Check } from "lucide-react";
+import { Database, Save, HardDriveDownload, School, Clock, QrCode, ShieldAlert, KeyRound, RefreshCw, Copy, Check, BellRing } from "lucide-react";
 
 export default function Settings() {
   const { t } = useLang();
@@ -35,6 +35,9 @@ export default function Settings() {
         qr_enabled: form.qr_enabled, periods_count: +form.periods_count, lesson_duration: +form.lesson_duration,
         timezone: form.timezone, maintenance_mode: form.maintenance_mode, require_2fa_admins: form.require_2fa_admins,
         student_signup_enabled: form.student_signup_enabled,
+        attendance_reminder_enabled: form.attendance_reminder_enabled,
+        attendance_reminder_offset_minutes: +form.attendance_reminder_offset_minutes,
+        substitute_reminder_offset_minutes: +form.substitute_reminder_offset_minutes,
       });
       toast.success("تم حفظ الإعدادات"); qc.invalidateQueries({ queryKey: ["settings"] });
     } catch (e) { toast.error(apiError(e)); }
@@ -122,6 +125,28 @@ export default function Settings() {
             <div className="space-y-1.5"><Label>نافذة التسجيل (دقيقة)</Label><Input type="number" value={form.attendance_window_minutes} onChange={(e) => set("attendance_window_minutes", e.target.value)} /></div>
             <div className="space-y-1.5"><Label>عدد الحصص</Label><Input type="number" value={form.periods_count} onChange={(e) => set("periods_count", e.target.value)} data-testid="periods-count" /></div>
             <div className="space-y-1.5"><Label>مدة الحصة (دقيقة)</Label><Input type="number" value={form.lesson_duration} onChange={(e) => set("lesson_duration", e.target.value)} /></div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-2"><BellRing className="h-5 w-5" /> تذكير تسجيل الحضور</CardTitle>
+            <Switch checked={form.attendance_reminder_enabled ?? true} onCheckedChange={(v) => set("attendance_reminder_enabled", v)} data-testid="reminder-enabled-toggle" />
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>تذكير المعلم (دقيقة بعد بداية الحصة)</Label>
+              <Input type="number" min="0" value={form.attendance_reminder_offset_minutes ?? 5}
+                onChange={(e) => set("attendance_reminder_offset_minutes", e.target.value)} data-testid="reminder-offset" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>تذكير المعلم البديل (دقيقة بعد بداية الحصة)</Label>
+              <Input type="number" min="0" value={form.substitute_reminder_offset_minutes ?? 20}
+                onChange={(e) => set("substitute_reminder_offset_minutes", e.target.value)} data-testid="substitute-reminder-offset" />
+            </div>
+            <p className="col-span-2 text-xs text-muted-foreground">
+              بعد بداية كل حصة بهذه المدة، يصل المعلم (أو البديل المكلّف) إشعارًا لتسجيل الحضور — يفتح الإشعار كشف الحضور مباشرة.
+            </p>
           </CardContent>
         </Card>
 

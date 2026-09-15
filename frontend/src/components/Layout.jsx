@@ -2,11 +2,12 @@ import React, { useEffect, useState } from "react";
 import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Menu, Search, Bell, Globe, LogOut, User as UserIcon, ChevronDown, School,
+  Menu, Search, Bell, Globe, LogOut, User as UserIcon, ChevronDown, School, Sun, Moon,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useLang } from "@/lib/i18n";
+import { useTheme } from "@/lib/theme";
 import { NAV, GROUP_ORDER } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -34,21 +35,21 @@ function SidebarContent({ onNavigate }) {
   const grouped = GROUP_ORDER.map((g) => ({ g, items: items.filter((i) => i.group === g) })).filter((x) => x.items.length);
 
   return (
-    <div className="flex h-full flex-col bg-white text-slate-900">
-      <div className="flex items-center gap-3 border-b border-slate-200 px-5 py-5">
+    <div className="flex h-full flex-col bg-card text-foreground">
+      <div className="flex items-center gap-3 border-b border-border px-5 py-5">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/20">
           <School className="h-6 w-6" />
         </div>
         <div className="min-w-0">
-          <p className="truncate text-sm font-extrabold leading-tight text-slate-900">{t("school_short")}</p>
-          <p className="truncate text-[11px] text-slate-500">{t("app_name")}</p>
+          <p className="truncate text-sm font-extrabold leading-tight text-foreground">{t("school_short")}</p>
+          <p className="truncate text-[11px] text-muted-foreground">{t("app_name")}</p>
         </div>
       </div>
       <ScrollArea className="flex-1 px-3 py-4">
         <nav className="space-y-6">
           {grouped.map(({ g, items }) => (
             <div key={g}>
-              <p className="px-3 pb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">{t(g)}</p>
+              <p className="px-3 pb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{t(g)}</p>
               <div className="space-y-1">
                 {items.map((item) => {
                   const Icon = item.icon;
@@ -62,8 +63,8 @@ function SidebarContent({ onNavigate }) {
                         cn(
                           "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                           isActive
-                            ? "bg-emerald-50 text-emerald-700 font-bold"
-                            : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                            ? "bg-emerald-50 text-emerald-700 font-bold dark:bg-emerald-500/15 dark:text-emerald-400"
+                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
                         )
                       }
                     >
@@ -77,7 +78,7 @@ function SidebarContent({ onNavigate }) {
           ))}
         </nav>
       </ScrollArea>
-      <div className="border-t border-slate-200 p-4 text-[11px] text-slate-400">
+      <div className="border-t border-border p-4 text-[11px] text-muted-foreground">
         v1.0 · 2026/2027
       </div>
     </div>
@@ -97,6 +98,15 @@ function NotificationBell() {
   const markAll = async () => {
     await api.post("/notifications/read-all");
     qc.invalidateQueries({ queryKey: ["notifications"] });
+  };
+  const openNotif = async (n) => {
+    if (!n.read) {
+      await api.post(`/notifications/${n.id}/read`);
+      qc.invalidateQueries({ queryKey: ["notifications"] });
+    }
+    if (n.meta?.type === "attendance_reminder" && n.meta?.timetable_id) {
+      navigate(`/take-attendance?lesson=${n.meta.timetable_id}&date=${n.meta.date}`);
+    }
   };
   return (
     <Popover>
@@ -122,7 +132,16 @@ function NotificationBell() {
             <p className="p-6 text-center text-sm text-muted-foreground">{t("no_data")}</p>
           ) : (
             (data?.items || []).slice(0, 15).map((n) => (
-              <div key={n.id} className={cn("border-b p-3 text-sm", !n.read && "bg-muted/40")}>
+              <div
+                key={n.id}
+                onClick={() => openNotif(n)}
+                className={cn(
+                  "border-b p-3 text-sm",
+                  !n.read && "bg-muted/40",
+                  n.meta?.type === "attendance_reminder" && "cursor-pointer hover:bg-muted/60"
+                )}
+                data-testid={`notif-popover-${n.id}`}
+              >
                 <p className="font-semibold text-foreground">{n.title}</p>
                 <p className="text-xs text-muted-foreground">{n.message}</p>
               </div>
@@ -218,6 +237,24 @@ function GlobalSearch() {
   );
 }
 
+function DarkModeToggle() {
+  const themeCtx = useTheme();
+  if (!themeCtx) return null;
+  const { theme, setTheme } = themeCtx;
+  const isDark = theme === "dark";
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={() => setTheme(isDark ? "light" : "dark")}
+      data-testid="dark-mode-toggle"
+      aria-label={isDark ? "الوضع الفاتح" : "الوضع الداكن"}
+    >
+      {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+    </Button>
+  );
+}
+
 export function Layout() {
   const { t, lang, toggle } = useLang();
   const { user, logout } = useAuth();
@@ -266,6 +303,7 @@ export function Layout() {
               <Globe className="h-4 w-4" />
               {lang === "ar" ? "EN" : "ع"}
             </Button>
+            <DarkModeToggle />
             <NotificationBell />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

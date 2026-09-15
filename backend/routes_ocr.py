@@ -10,7 +10,6 @@ import binascii
 import json
 import os
 import re
-from uuid import uuid4
 from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -18,11 +17,26 @@ from pydantic import BaseModel, Field, field_validator
 
 from core import db, new_id, iso, get_current_user, require, log_audit
 
-from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
+from google import genai
+from google.genai import types as genai_types
 
 router = APIRouter(prefix="/api/ocr", tags=["ocr"])
 
-EMERGENT_LLM_KEY = os.environ.get("EMERGENT_LLM_KEY", "")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_MODEL = "gemini-2.5-pro"
+
+
+def _sniff_mime_type(raw: bytes) -> str:
+    """Best-effort image mime type detection from magic bytes (data-URI prefix is stripped before we get here)."""
+    if raw[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    if raw[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if raw[:6] in (b"GIF87a", b"GIF89a"):
+        return "image/gif"
+    if raw[:4] == b"RIFF" and raw[8:12] == b"WEBP":
+        return "image/webp"
+    return "image/jpeg"
 
 
 class OCRRow(BaseModel):
@@ -103,22 +117,29 @@ def _parse_json(text: str) -> OCRResult:
 @router.post("/attendance")
 async def ocr_attendance(body: OCRRequest, request: Request,
                          user: dict = Depends(require("attendance.create", "attendance.edit"))):
-    if not EMERGENT_LLM_KEY:
+    if not GEMINI_API_KEY:
         raise HTTPException(status_code=500, detail="مفتاح النموذج غير مضبوط")
 
-    chat = (
-        LlmChat(
-            api_key=EMERGENT_LLM_KEY,
-            session_id=f"ocr-{uuid4()}",
-            system_message=SYSTEM_PROMPT,
-        )
-        .with_model("gemini", "gemini-2.5-pro")
-        .with_params(temperature=0.0, max_tokens=4096)
-    )
+    image_bytes = base64.b64decode(body.image_base64)
+    mime_type = _sniff_mime_type(image_bytes)
 
     try:
-        msg = UserMessage(text=USER_PROMPT, file_contents=[ImageContent(body.image_base64)])
-        response_text = await chat.send_message(msg)
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        response = await client.aio.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=[
+                genai_types.Content(role="user", parts=[
+                    genai_types.Part.from_text(text=USER_PROMPT),
+                    genai_types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
+                ]),
+            ],
+            config=genai_types.GenerateContentConfig(
+                system_instruction=SYSTEM_PROMPT,
+                temperature=0.0,
+                max_output_tokens=4096,
+            ),
+        )
+        response_text = response.text or ""
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"فشل الاتصال بنموذج OCR: {exc}") from exc
 
