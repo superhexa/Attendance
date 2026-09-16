@@ -13,6 +13,28 @@ from core import db, new_id, iso, get_current_user, require, log_audit, notify
 router = APIRouter(prefix="/api/substitutions", tags=["substitutions"])
 
 
+async def find_active_substitution(date: str, entry: dict) -> Optional[dict]:
+    """Find an active substitution covering a timetable entry on a given date.
+
+    Matches either by the exact timetable_id (when the assignment was made
+    against a specific timetable slot) or, when the substitution was created
+    without one, by section_id + period (the fallback the substitutions UI
+    currently uses).
+    """
+    return await db.substitutions.find_one({
+        "date": date,
+        "status": {"$ne": "cancelled"},
+        "$or": [
+            {"timetable_id": entry.get("id")},
+            {
+                "timetable_id": {"$in": [None, ""]},
+                "section_id": entry.get("section_id"),
+                "period": entry.get("period"),
+            },
+        ],
+    })
+
+
 async def _enrich(sub: dict) -> dict:
     orig = await db.teachers.find_one({"id": sub.get("original_teacher_id")}, {"_id": 0, "full_name": 1}) or {}
     subst = await db.teachers.find_one({"id": sub.get("substitute_teacher_id")}, {"_id": 0, "full_name": 1}) or {}

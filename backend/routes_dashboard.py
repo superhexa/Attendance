@@ -423,6 +423,9 @@ class SettingsBody(BaseModel):
     week_start: Optional[int] = None
     lesson_duration: Optional[int] = None
     periods_count: Optional[int] = None
+    attendance_reminder_enabled: Optional[bool] = None
+    attendance_reminder_offset_minutes: Optional[int] = None
+    substitute_reminder_offset_minutes: Optional[int] = None
     maintenance_mode: Optional[bool] = None
     require_2fa_admins: Optional[bool] = None
     student_signup_enabled: Optional[bool] = None

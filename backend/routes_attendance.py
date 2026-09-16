@@ -9,6 +9,7 @@ from core import (
     db, new_id, iso, now_utc, get_current_user, require, log_audit,
     notify, notify_roles, get_settings,
 )
+from routes_substitutions import find_active_substitution
 import rbac
 
 router = APIRouter(prefix="/api", tags=["attendance"])
@@ -16,14 +17,19 @@ router = APIRouter(prefix="/api", tags=["attendance"])
 VALID_STATUSES = ["PRESENT", "ABSENT", "LATE", "EXCUSED", "LEFT_EARLY"]
 
 
-async def _assert_teacher_owns(user: dict, entry: dict):
-    """Anti-cheating: a TEACHER may only manage their own lessons."""
+async def _assert_teacher_owns(user: dict, entry: dict, date: Optional[str] = None):
+    """Anti-cheating: a TEACHER may only manage their own lessons —
+    unless they are the approved substitute for this lesson on this date."""
     if user.get("role") in ("SUPER_ADMIN", "DIRECTOR", "VICE_DIRECTOR", "ATTENDANCE_OFFICER", "CLASS_SUPERVISOR"):
         return
     if user.get("role") == "TEACHER":
-        if user.get("teacher_id") != entry.get("teacher_id"):
-            raise HTTPException(status_code=403, detail="لا يمكنك تسجيل حضور حصة معلم آخر")
-        return
+        if user.get("teacher_id") == entry.get("teacher_id"):
+            return
+        if date and user.get("teacher_id"):
+            sub = await find_active_substitution(date, entry)
+            if sub and sub.get("substitute_teacher_id") == user.get("teacher_id"):
+                return
+        raise HTTPException(status_code=403, detail="لا يمكنك تسجيل حضور حصة معلم آخر")
     raise HTTPException(status_code=403, detail="ليس لديك صلاحية تسجيل الحضور")
 
 
@@ -44,7 +50,7 @@ async def get_roster(timetable_id: str, date: str, user: dict = Depends(require(
     entry = await db.timetable.find_one({"id": timetable_id}, {"_id": 0})
     if not entry:
         raise HTTPException(status_code=404, detail="الحصة غير موجودة")
-    await _assert_teacher_owns(user, entry)
+    await _assert_teacher_owns(user, entry, date)
     students = await db.students.find(
         {"section_id": entry["section_id"], "deleted": {"$ne": True}}, {"_id": 0}
     ).sort("full_name", 1).to_list(500)
@@ -83,7 +89,7 @@ async def submit_attendance(body: SubmitBody, request: Request, user: dict = Dep
     entry = await db.timetable.find_one({"id": body.timetable_id}, {"_id": 0})
     if not entry:
         raise HTTPException(status_code=404, detail="الحصة غير موجودة")
-    await _assert_teacher_owns(user, entry)
+    await _assert_teacher_owns(user, entry, body.date)
 
     existing = await db.attendance_sessions.find_one({"timetable_id": body.timetable_id, "date": body.date})
     if existing and existing.get("status") == "locked":

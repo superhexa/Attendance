@@ -3,12 +3,14 @@ from pathlib import Path
 import os
 load_dotenv(Path(__file__).parent / ".env")
 
+import asyncio
 import logging
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
 
 from core import db, client, ensure_indexes, seed_admin
+import reminders
 import routes_auth, routes_structure, routes_users, routes_timetable, routes_attendance, routes_dashboard, routes_import, routes_promotion, routes_signups, routes_substitutions, routes_ocr
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -56,8 +58,16 @@ async def startup():
         logger.info("Startup complete: indexes ensured, admin seeded.")
     except Exception as e:
         logger.exception("Startup error: %s", e)
+    app.state.reminder_task = asyncio.create_task(reminders.reminder_loop())
 
 
 @app.on_event("shutdown")
 async def shutdown():
+    task = getattr(app.state, "reminder_task", None)
+    if task:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
     client.close()

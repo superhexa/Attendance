@@ -113,9 +113,25 @@ async def lessons_today(date: Optional[str] = None, user: dict = Depends(get_cur
     dow = _weekday_sunday_based(target)
     date_str = target.strftime("%Y-%m-%d")
     q = {"deleted": {"$ne": True}, "day_of_week": dow}
+    sub_timetable_ids = set()
 
     if user.get("role") == "TEACHER" and user.get("teacher_id"):
-        q["teacher_id"] = user["teacher_id"]
+        # A substitute also needs to see (and take attendance for) the
+        # specific class they've been assigned to cover today.
+        subs = await db.substitutions.find(
+            {"date": date_str, "substitute_teacher_id": user["teacher_id"], "status": {"$ne": "cancelled"}},
+            {"_id": 0}
+        ).to_list(50)
+        sub_timetable_ids = {s["timetable_id"] for s in subs if s.get("timetable_id")}
+        sub_section_periods = {(s["section_id"], s["period"]) for s in subs if not s.get("timetable_id") and s.get("period") is not None}
+        if sub_timetable_ids or sub_section_periods:
+            q = {"deleted": {"$ne": True}, "day_of_week": dow, "$or": [{"teacher_id": user["teacher_id"]}]}
+            if sub_timetable_ids:
+                q["$or"].append({"id": {"$in": list(sub_timetable_ids)}})
+            for section_id, period in sub_section_periods:
+                q["$or"].append({"section_id": section_id, "period": period})
+        else:
+            q["teacher_id"] = user["teacher_id"]
     elif user.get("role") == "STUDENT" and user.get("student_id"):
         stu = await db.students.find_one({"id": user["student_id"]}, {"_id": 0, "section_id": 1})
         q["section_id"] = (stu or {}).get("section_id", "__none__")
@@ -127,6 +143,8 @@ async def lessons_today(date: Optional[str] = None, user: dict = Depends(get_cur
         session = await db.attendance_sessions.find_one({"timetable_id": e["id"], "date": date_str}, {"_id": 0})
         e["attendance_status"] = session["status"] if session else "pending"
         e["date"] = date_str
+        if user.get("role") == "TEACHER" and e.get("teacher_id") != user.get("teacher_id"):
+            e["is_substitute"] = True
         result.append(e)
     return result
 

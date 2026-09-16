@@ -194,6 +194,9 @@ DEFAULT_SETTINGS = {
     "week_start": 0,  # 0 = Sunday
     "lesson_duration": 45,
     "periods_count": 7,
+    "attendance_reminder_enabled": True,
+    "attendance_reminder_offset_minutes": 5,
+    "substitute_reminder_offset_minutes": 20,
     "maintenance_mode": False,
     "require_2fa_admins": False,
     "student_signup_key": "",
@@ -247,6 +250,9 @@ async def ensure_indexes():
     await db.attendance_records.create_index([("student_id", 1), ("date", 1), ("timetable_id", 1)], unique=True)
     await db.audit_logs.create_index("timestamp")
     await db.notifications.create_index([("user_id", 1), ("read", 1)])
+    await db.attendance_reminders_sent.create_index(
+        [("date", 1), ("timetable_id", 1), ("kind", 1)], unique=True
+    )
 
 
 async def seed_admin():
