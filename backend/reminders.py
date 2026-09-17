@@ -1,8 +1,19 @@
 """Background job: reminds teachers — and substitute teachers — to take
 attendance a configurable number of minutes after each lesson period starts.
 
-Runs as a plain asyncio task started at app startup (see server.py). No new
-process, cron, or dependency is required.
+Two ways this runs, so it works both on a normal always-on server and on
+Vercel's serverless functions:
+
+  1. `reminder_loop()` — a plain asyncio task started at app startup, ticking
+     every 30s. Works on any always-on deployment (VPS, Docker, etc.) with no
+     extra process or dependency. On serverless this task is created but the
+     container is frozen/recycled between requests, so it can't be relied on
+     there — harmless, just ineffective.
+  2. `POST/GET /api/cron/reminders` — a one-shot HTTP endpoint that runs a
+     single check. This is what actually drives reminders on Vercel: wire it
+     up in vercel.json's `crons` (see the repo root). It's guarded by
+     CRON_SECRET when that env var is set (Vercel sets it automatically for
+     projects with cron jobs).
 
 Flow per lesson, once its period has started today:
   - If a substitute is assigned to that exact class/period/date, the
@@ -13,15 +24,20 @@ Flow per lesson, once its period has started today:
   - Once attendance has been submitted (session locked) for that lesson, no
     more reminders are sent for it.
   - Each (date, timetable_id, kind) reminder is only ever sent once, tracked
-    in the `attendance_reminders_sent` collection.
+    in the `attendance_reminders_sent` collection — so it's safe to call
+    check_and_send_reminders() as often as you like, from either path above,
+    even both at once.
 
 Both offsets and the on/off switch are editable by anyone with the
 `settings.manage` permission (Settings page → PATCH /api/settings).
 """
 import asyncio
 import logging
+import os
 from datetime import datetime
 from zoneinfo import ZoneInfo
+
+from fastapi import APIRouter, Header, HTTPException
 
 from core import db, new_id, iso, get_settings, notify
 from routes_substitutions import find_active_substitution
@@ -159,3 +175,26 @@ async def reminder_loop():
         except Exception:
             logger.exception("Attendance reminder check failed")
         await asyncio.sleep(CHECK_INTERVAL_SECONDS)
+
+
+# --- Serverless-safe trigger -------------------------------------------------
+# On Vercel there's no long-lived process to run reminder_loop() reliably, so
+# vercel.json schedules a cron hit against this endpoint instead. It's plain
+# HTTP so any external scheduler (GitHub Actions, an uptime pinger, etc.)
+# works too — nothing here is Vercel-specific.
+router = APIRouter(prefix="/api/cron", tags=["cron"])
+
+
+def _check_cron_secret(authorization: str):
+    secret = os.environ.get("CRON_SECRET")
+    if secret and authorization != f"Bearer {secret}":
+        raise HTTPException(status_code=401, detail="unauthorized")
+
+
+@router.get("/reminders")
+@router.post("/reminders")
+async def run_reminders_cron(authorization: str = Header(default="")):
+    _check_cron_secret(authorization)
+    await check_and_send_reminders()
+    return {"ok": True}
+

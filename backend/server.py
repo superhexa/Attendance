@@ -29,7 +29,7 @@ async def health():
     return {"status": "healthy"}
 
 
-for module in (routes_auth, routes_structure, routes_users, routes_timetable, routes_attendance, routes_dashboard, routes_import, routes_promotion, routes_signups, routes_substitutions, routes_ocr):
+for module in (routes_auth, routes_structure, routes_users, routes_timetable, routes_attendance, routes_dashboard, routes_import, routes_promotion, routes_signups, routes_substitutions, routes_ocr, reminders):
     app.include_router(module.router)
 
 
